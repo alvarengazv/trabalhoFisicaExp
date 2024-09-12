@@ -4,7 +4,7 @@ import Boost from "highcharts/modules/boost";
 import { temperatureChart } from "./chart/temperature";
 import { regressionChart } from "./chart/regression";
 
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   Container,
   Main,
@@ -14,12 +14,15 @@ import {
   InputsContainer, // Adicionado novo componente para os inputs
 } from "./styles";
 import { addSeriesInChart } from "./controllers/firebaseRealtime";
-import { Button, TextField } from "@mui/material"; // Adicionado TextField para os inputs
+import { Backdrop, Button, CircularProgress, TableContainer, TextField } from "@mui/material"; // Adicionado TextField para os inputs
 
 import * as React from "react";
 import { ModalContext } from "./context/modalContext";
 import { ModalContextDTO } from "./entities/modalContextDTO";
 import { ToastContainer } from "react-toastify";
+import { min } from "moment";
+import { FormComponent } from "./form";
+import { TemperaturaEquilibrioRealtime } from "./controllers/temperaturaEquilibrioRealtime";
 
 Boost(Highcharts);
 
@@ -35,24 +38,97 @@ export const Chart = () => {
   const {
     realTime,
     chartUseRefTemp,
-    handleOpenChart,
     chartUseRefReg,
+    handleOpenChart,
+    chartRGOpen,
     handleCleanChart,
+    VirtuosoTableComponents,
+    fixedHeaderContent,
+    rowContent,
+    returnTable,
     handleVariacaoTemperatura,
     handleVariacaoTempo,
     handleMassaAgua,
     handleMassaObjeto,
-    handleTempInicialAgua,
+    handleTempAmbiente,
     handleTempInicialObjeto,
+    handleCapacidadeTermicaCalorimetro,
+    handleIncertezaCapacidadeTermicaCalorimetro,
+    calculaCalorEspecifico,
+    calculaIncertezaCalorEspecifico,
+    massaAgua,
+    massaObjeto,
+    tempInicialAgua,
+    tempInicialObjeto,
+    capacidadeTermicaCalorimetro,
+    incertezaCapacidadeTermicaCalorimetro,
   } = addSeriesInChart();
+
+  const {
+    temperaturaFinal,
+    isTemperatureRight,
+    buscaTemperatura,
+    setIsTemperatureRight
+  } = TemperaturaEquilibrioRealtime();
+
+
+  const [isFormSubmmited, setIsFormSubmmited] = useState<boolean>(false);
+  const [isReady, setIsReady] = useState<boolean>(false);
   useContext(ModalContext) as ModalContextDTO;
 
-  const handleEquilibriumSubmit = () => {
-    // Lógica para lidar com os dados de equilíbrio quando o usuário submete o formulário
-    // Você pode acessar os valores usando equilibriumTime e equilibriumTemperature
-  };
+  useEffect(() => {
+    if(!isFormSubmmited){
+      // Function to be executed every 30 seconds
+      const checkTemperatureOnLoad = () => {
+        buscaTemperatura().then(() => {
+          if (isTemperatureRight) {
+            console.log("Temperature is correct: ", temperaturaFinal);
+          } else {
+            console.log("Temperature is not correct: ", temperaturaFinal);
+          }
+        });
+      };
+      if(temperaturaFinal === -1000){
+        checkTemperatureOnLoad();
+      }
 
-  realTime();
+      // Call the function every 30 seconds until the temperature is right
+      const interval = setInterval(() => {
+        checkTemperatureOnLoad();
+      }, 30000); // 30 seconds interval
+
+      // If temperature is right, clear the interval to stop checking
+      if (isTemperatureRight) {
+        clearInterval(interval);
+        if(!isReady && isFormSubmmited)
+          handleTempAmbiente(temperaturaFinal);
+      }
+
+      // Cleanup the interval when the component unmounts or temperature becomes correct
+      return () => clearInterval(interval);
+    }
+  }, [
+    isTemperatureRight, 
+    temperaturaFinal,
+    ]);
+
+  useEffect(() => {
+    console.log("Massa da água: ", massaAgua);
+    console.log("Massa do objeto: ", massaObjeto);
+    console.log("Temperatura inicial da água: ", tempInicialAgua);
+    console.log("Temperatura inicial do objeto: ", tempInicialObjeto);
+    console.log("Capacidade térmica do calorímetro: ", capacidadeTermicaCalorimetro);
+    console.log("Incerteza da capacidade térmica do calorímetro: ", incertezaCapacidadeTermicaCalorimetro);
+  }, [
+    massaAgua,
+    massaObjeto,
+    tempInicialAgua,
+    tempInicialObjeto,
+    capacidadeTermicaCalorimetro,
+    incertezaCapacidadeTermicaCalorimetro,
+  ]);
+
+  // realTime();
 
   return (
     <Main>
@@ -67,8 +143,23 @@ export const Chart = () => {
         theme="colored"
       />
 
+      <Backdrop
+        sx={{
+          color: '#fff',
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        open={!isTemperatureRight && !isReady}  // Open Backdrop if temperature is not right
+      >
+        <CircularProgress color="inherit" />
+        <p>Atingindo a temperatura de equilíbrio</p>
+      </Backdrop>
+
       <Container>
-        <UniqueChart>
+        {/* <UniqueChart>
           <HighchartsReact
             highcharts={Highcharts}
             options={{
@@ -76,141 +167,39 @@ export const Chart = () => {
             }}
             ref={chartUseRefTemp as React.Ref<HighchartsReact.RefObject>}
           />
-        </UniqueChart>
+        </UniqueChart> */}
 
-        <UniqueChart>
-          <HighchartsReact
-            highcharts={Highcharts}
-            options={{
-              ...optionsReg,
-            }}
-            ref={chartUseRefReg as React.Ref<HighchartsReact.RefObject>}
-          />
-        </UniqueChart>
+        <FormComponent 
+          temperaturaFinal={temperaturaFinal}
+          buscaTemperatura={buscaTemperatura}
+          isTemperatureRight={isTemperatureRight}
+          isReady={isReady}
+          isFormSubmmited={isFormSubmmited}
+          setIsReady={setIsReady}
+          handleMassaAgua={handleMassaAgua}
+          handleMassaObjeto={handleMassaObjeto}
+          handleTempInicialObjeto={handleTempInicialObjeto}
+          handleCapacidadeTermicaCalorimetro={handleCapacidadeTermicaCalorimetro}
+          handleIncertezaCapacidadeTermicaCalorimetro={handleIncertezaCapacidadeTermicaCalorimetro}
+          setIsFormSubmmited={setIsFormSubmmited}
+          setIsTemperatureRight={setIsTemperatureRight}
+        />
+
+        {isTemperatureRight && isReady && (
+          <InputsContainer>
+            {/* tabela: */}
+              <h2> Calor Específico Encontrado: {calculaCalorEspecifico()} ± {calculaIncertezaCalorEspecifico()} </h2>
+              <TableContainer>
+                <thead>
+                </thead>
+                <tbody>
+                </tbody>
+              </TableContainer>
+          </InputsContainer>
+        )}
       </Container>
 
-      <Buttons>
-        <Button onClick={() => handleOpenChart()} variant="contained">
-          Gerar Regressão Linear
-        </Button>
-        <Button
-          variant="contained"
-          color="error"
-          onClick={() => handleCleanChart()}
-        >
-          Limpar Gráficos
-        </Button>
-      </Buttons>
-
-      <InputsContainer>
-        <h2> Insira os valores para achar a temperatura de equilíbrio</h2>
-        <p>
-          Será considerado a temperatura de equilíbrio quando a partir do
-          tempo(em segundos) selecionado a temperatura variar o grau selecionado
-        </p>
-        <TextField
-          label="Variação do tempo"
-          type="number"
-          variant="outlined"
-          // value={equilibriumTime}
-          margin="normal"
-          onChange={(e) => handleVariacaoTempo(Number(e.target.value))}
-        />
-        <TextField
-          label="Variação da temperatura (em °C)"
-          type="number"
-          variant="outlined"
-          // value={equilibriumTemperature}
-          color="primary"
-          margin="normal"
-          onChange={(e) => handleVariacaoTemperatura(Number(e.target.value))}
-        />
-
-        <h2>
-          {" "}
-          Insira os valores abaixo para achar o calor específico do objeto
-          submerso
-        </h2>
-        <TextField
-          label="Massa da água (em gramas)"
-          type="number"
-          variant="outlined"
-          margin="normal"
-          onChange={(e) => handleMassaAgua(Number(e.target.value))}
-        />
-
-        <TextField
-          label="Temperatura inicial da água (em °C)"
-          type="number"
-          variant="outlined"
-          margin="normal"
-          onChange={(e) => handleTempInicialAgua(Number(e.target.value))}
-        />
-
-        <TextField
-          label="Massa do objeto (em gramas)"
-          type="number"
-          variant="outlined"
-          margin="normal"
-          onChange={(e) => handleMassaObjeto(Number(e.target.value))}
-        />
-
-        <TextField
-          label="Temperatura inicial do objeto (em °C)"
-          type="number"
-          variant="outlined"
-          margin="normal"
-          onChange={(e) => handleTempInicialObjeto(Number(e.target.value))}
-        />
-      </InputsContainer>
-
-      <ContainerTable>
-        <h2>Regressão Linear</h2>A regressão linear dos mínimos quadrados é uma
-        técnica estatística utilizada para modelar a relação entre uma variável
-        dependente e uma ou mais variáveis independentes. No caso da regressão
-        linear simples, há apenas uma variável independente. Essa técnica é
-        amplamente utilizada para análise e previsão de dados em diversos
-        campos, incluindo ciências sociais, econômicas e científicas. A ideia
-        por trás da regressão linear dos mínimos quadrados é encontrar a linha
-        reta que melhor se ajusta aos dados observados, minimizando a soma dos
-        quadrados dos erros entre os valores previstos pela linha de regressão e
-        os valores reais. Essa linha de regressão é representada por uma equação
-        na forma y = mx + b, onde "y" é a variável dependente (nesse caso, a
-        temperatura), "x" é a variável independente (por exemplo, o tempo) e "m"
-        e "b" são os coeficientes da regressão. Ao traçar o gráfico com a
-        temperatura e a linha de regressão, você poderá observar visualmente a
-        relação entre as variáveis e a qualidade do ajuste. Se a linha de
-        regressão for uma boa representação dos dados, os pontos observados
-        devem estar próximos a ela. Se houver uma dispersão significativa em
-        torno da linha, pode indicar uma relação mais complexa ou outros fatores
-        que não estão sendo considerados pelo modelo linear simples. É
-        importante lembrar que a regressão linear dos mínimos quadrados
-        pressupõe que a relação entre as variáveis seja linear e que os erros de
-        medição sejam aleatórios e independentes. Além disso, é necessário
-        analisar os resultados estatísticos, como o coeficiente de determinação
-        (R²), para avaliar a qualidade do ajuste e a significância estatística
-        dos coeficientes da regressão.
-      </ContainerTable>
-
-      <ContainerTable>
-        <h2>Temperatura de Equilíbrio (Água-Objeto)</h2>A temperatura de
-        equilíbrio é um fenômeno intrigante que se desenrola quando um objeto é
-        imerso na água, culminando em um ponto de estabilidade térmica entre
-        ambos. Este processo é governado pelos princípios fundamentais de
-        condução térmica, convecção e radiação, conduzindo a uma troca de
-        energia térmica até que as temperaturas do objeto e da água se igualem.
-        Observável por meio de instrumentos sensíveis, esse equilíbrio térmico
-        não apenas revela mudanças nas propriedades físicas da água e do objeto,
-        mas também tem aplicações práticas significativas, desde o design de
-        sistemas de resfriamento até estudos científicos aprofundados sobre as
-        características térmicas de materiais específicos em ambientes
-        aquáticos. Além disso, serve como uma ferramenta educacional envolvente,
-        permitindo a exploração prática de conceitos de transferência de calor e
-        termodinâmica. Compreender a temperatura de equilíbrio na interação
-        água-objeto não apenas desvenda os mistérios térmicos do ambiente
-        aquático, mas também oferece insights cruciais para diversas áreas
-        científicas e tecnológicas.
-      </ContainerTable>
+      
     </Main>
   );
 };

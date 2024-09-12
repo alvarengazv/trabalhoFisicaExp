@@ -18,6 +18,7 @@ import React from "react";
 import { Paper } from "@mui/material";
 import { ColumnData, Data } from "../entities/columnDataDTO";
 import { toast } from "react-toastify";
+import { TemperaturaEquilibrioRealtime } from "./temperaturaEquilibrioRealtime";
 
 export const addSeriesInChart = () => {
   const {
@@ -37,23 +38,22 @@ export const addSeriesInChart = () => {
 
   let variacaoTemperatura_ = 0;
   let variacaoTempo_ = 0;
-  let massaAgua = 0;
-  let massaObjeto = 0;
-  let tempInicialAgua = 0
-  let tempInicialObjeto = 0
+  const [massaAgua, handleMassaAgua] = useState<number>(0);
+  const [massaObjeto, handleMassaObjeto] = useState<number>(0);
+  const [tempInicialAgua, handleTempAmbiente] = useState<number>(0);
+  const [tempInicialObjeto, handleTempInicialObjeto] = useState<number>(0);
+  const [capacidadeTermicaCalorimetro, handleCapacidadeTermicaCalorimetro] = useState<number>(15.07617);
+  const [incertezaCapacidadeTermicaCalorimetro, handleIncertezaCapacidadeTermicaCalorimetro] = useState<number>(4.0967);
   const incertezaBalanca = 0.001
   const incertezaTermometro = 0.5
-  const incertezaCalorimetro = 4.0967
+  const calorEspecificoAgua = 1 // 1 cal/g°C
+  const {
+    temperaturaFinal,
+    isTemperatureRight,
+    buscaTemperatura,
+  } = TemperaturaEquilibrioRealtime();
 
   let tempEquilibrio = 0
-
-  const handleTempInicialAgua = (event: any) => {
-    tempInicialAgua = event;
-  };
-
-  const handleTempInicialObjeto = (event: any) => {
-    tempInicialObjeto = event;
-  };
 
   const handleVariacaoTemperatura = (event: any) => {
     variacaoTemperatura_ = event;
@@ -63,16 +63,63 @@ export const addSeriesInChart = () => {
     variacaoTempo_ = event;
   };
 
-  const handleMassaAgua = (event: any) => {
-    massaAgua = event;
-  };
-
-  const handleMassaObjeto = (event: any) => {
-    massaObjeto = event;
-  };
-
-
   let firstDataTimestamp = 0;
+
+  const realTime = () => {
+    const dbRef = ref(db, "temperatura");
+    onValue(dbRef, (snapshot) => {
+      let data;
+      const result = snapshot.val();
+      if (typeof result === "number") {
+        const date = new Date().getTime();
+        data = [date, result];
+      } else {
+        snapshot.forEach((childSnapshot) => {
+          if (childSnapshot.key) {
+            data = [new Date().getTime(), childSnapshot.val()];
+          }
+        });
+      }
+
+      if (data) {
+        processTemperatureData(data, temps);
+        const hasSerie = chartUseRefTemp?.current?.chart.getOptions() as any;
+        if (hasSerie.series.length === 0) {
+          chartUseRefTemp?.current?.chart.addSeries({
+            type: "line",
+            name: "Temperature (°C)",
+            data: [],
+          });
+        }
+        verificaVariacaoTemperatura();
+
+        chartUseRefTemp?.current?.chart.series[0].addPoint({
+          x: temps[temps.length - 1][0],
+          y: temps[temps.length - 1][1],
+        });
+        chartUseRefReg?.current?.chart.redraw();
+      }
+    });
+  };
+
+  function processTemperatureData(newData: any, temps: any): any {
+    const processedDataItem = [0, newData[1]];
+    if (temps.length === 0 && newData[1])
+      firstDataTimestamp = newData[0] / 1000;
+
+    if (temps.length === 1) {
+      processedDataItem[0] = newData[0] / 1000 - firstDataTimestamp;
+    } else if (temps.length > 0) {
+      processedDataItem[0] = newData[0] / 1000 - firstDataTimestamp;
+    }
+
+    TempToTable.push([
+      new Date(newData[0]).toLocaleString(),
+      newData[1],
+      processedDataItem[0],
+    ]);
+    temps.push(processedDataItem);
+  }
 
   const verificaVariacaoTemperatura = () => {
     // Obtém o comprimento do array temps
@@ -132,8 +179,60 @@ export const addSeriesInChart = () => {
       }
     }
   };
-  
-  
+
+  const calculaCalorEspecifico = () => {
+    console.log(massaAgua, massaObjeto, tempInicialAgua, tempInicialObjeto)
+    if(massaAgua !== 0 && massaObjeto !== 0 && tempInicialAgua !== 0 && tempInicialObjeto !== 0){      
+      const DeltaTempAgua = temperaturaFinal - tempInicialAgua;
+      const DeltaTempObjeto = temperaturaFinal - tempInicialObjeto;
+
+      const calorEspecificoMaterial = Math.abs(((massaAgua * calorEspecificoAgua * DeltaTempAgua) + (capacidadeTermicaCalorimetro * DeltaTempAgua)) / (massaObjeto  * DeltaTempObjeto))
+      return calorEspecificoMaterial
+   
+    } else{
+      return null
+    }
+  }
+
+  const calculaIncertezaCalorEspecifico = () => {
+    console.log(massaAgua, massaObjeto, tempInicialAgua, tempInicialObjeto)
+    if(massaAgua !== 0 && massaObjeto !== 0 && tempInicialAgua !== 0 && tempInicialObjeto !== 0){
+      const DeltaTempAgua = temperaturaFinal - tempInicialAgua;
+      const DeltaTempObjeto = temperaturaFinal - tempInicialObjeto;
+
+      let parcelaMassaAgua = (calorEspecificoAgua * ((DeltaTempAgua) / (massaObjeto * DeltaTempObjeto)))
+      parcelaMassaAgua *= parcelaMassaAgua
+      parcelaMassaAgua *= incertezaBalanca * incertezaBalanca
+
+      let parcelaMassaObjeto = (- ( ((calorEspecificoAgua * massaAgua)*DeltaTempAgua) + (capacidadeTermicaCalorimetro * DeltaTempAgua) ) / ((massaObjeto * massaObjeto) * DeltaTempObjeto) )
+      parcelaMassaObjeto *= parcelaMassaObjeto
+      parcelaMassaObjeto *= incertezaBalanca * incertezaBalanca
+
+      let parcelaTempFinal = ( ( ((calorEspecificoAgua * massaAgua) * (tempInicialAgua - tempInicialObjeto)) + ((capacidadeTermicaCalorimetro) * (tempInicialAgua - tempInicialObjeto)) ) / ((massaObjeto) * (DeltaTempObjeto * DeltaTempObjeto)) )
+      parcelaTempFinal *= parcelaTempFinal
+      parcelaTempFinal *= incertezaTermometro * incertezaTermometro
+
+      let parcelaTempInicialAgua = (- ((calorEspecificoAgua * massaAgua) + capacidadeTermicaCalorimetro) / (massaObjeto * DeltaTempObjeto) )
+      parcelaTempInicialAgua *= parcelaTempInicialAgua
+      parcelaTempInicialAgua *= incertezaTermometro * incertezaTermometro
+
+      let parcelaTempInicialObjeto = ( ( ((calorEspecificoAgua * massaAgua) * DeltaTempAgua) + (capacidadeTermicaCalorimetro * DeltaTempAgua) ) / ( (massaObjeto) * (DeltaTempObjeto * DeltaTempObjeto) ))
+      parcelaTempInicialObjeto *= parcelaTempInicialObjeto
+      parcelaTempInicialObjeto *= incertezaTermometro * incertezaTermometro
+
+      let parcelaCapacidadeTermicaCalorimetro = ( DeltaTempAgua / (massaObjeto * DeltaTempObjeto) )
+      parcelaCapacidadeTermicaCalorimetro *= parcelaCapacidadeTermicaCalorimetro
+      parcelaCapacidadeTermicaCalorimetro *= incertezaCapacidadeTermicaCalorimetro * incertezaCapacidadeTermicaCalorimetro
+
+      const somaAbsoluta = Math.abs(parcelaMassaAgua) + Math.abs(parcelaMassaObjeto) + Math.abs(parcelaTempFinal) + Math.abs(parcelaTempInicialAgua) + Math.abs(parcelaTempInicialObjeto) + Math.abs(parcelaCapacidadeTermicaCalorimetro)
+      const incertezaCalorEspecificoMaterial = Math.sqrt(somaAbsoluta)
+
+      return incertezaCalorEspecificoMaterial
+   
+    } else{
+      return null
+    }
+  }
   
   const calculatorReg = () => {
     chartUseRefReg?.current?.chart.series[1]?.remove();
@@ -199,68 +298,6 @@ export const addSeriesInChart = () => {
     TempToTable = [];
   };
 
-  const calculaCalorEspecifico = () => {
-    console.log(massaAgua, massaObjeto, tempInicialAgua, tempInicialObjeto)
-    if(massaAgua !== 0 && massaObjeto !== 0 && tempInicialAgua !== 0 && tempInicialObjeto !== 0){
-      
-      const DeltaTempAgua = tempEquilibrio - tempInicialAgua;
-      const DeltaTempObjeto = tempEquilibrio - tempInicialObjeto;
-      const calorEspecificoAgua = 1 // 1 cal/g°C
-      const capacidadeTermicaCalorimetro = 15.07617 // 15 cal/°C
-
-
-      const calorEspecificoMaterial = (massaAgua * calorEspecificoAgua * DeltaTempAgua) + (capacidadeTermicaCalorimetro * DeltaTempAgua) / (massaObjeto  * DeltaTempObjeto)
-      console.log(calorEspecificoMaterial)
-      return calorEspecificoMaterial
-   
-    } else{
-      return null
-    }
-  }
-
-  const calculaIncertezaCalorEspecifico = () => {
-    console.log(massaAgua, massaObjeto, tempInicialAgua, tempInicialObjeto)
-    if(massaAgua !== 0 && massaObjeto !== 0 && tempInicialAgua !== 0 && tempInicialObjeto !== 0){
-      
-      const DeltaTempAgua = tempEquilibrio - tempInicialAgua;
-      const DeltaTempObjeto = tempEquilibrio - tempInicialObjeto;
-      const calorEspecificoAgua = 1 // 1 cal/g°C
-      const capacidadeTermicaCalorimetro = 15.07617 // 15 cal/°C
-
-      let parcelaMassaAgua = (calorEspecificoAgua * ((DeltaTempAgua) / (massaObjeto * DeltaTempObjeto)))
-      parcelaMassaAgua *= parcelaMassaAgua
-      parcelaMassaAgua *= incertezaBalanca * incertezaBalanca
-
-      let parcelaMassaObjeto = (- ( ((calorEspecificoAgua * massaAgua)*DeltaTempAgua) + capacidadeTermicaCalorimetro * DeltaTempAgua) / ((massaObjeto * massaObjeto) * DeltaTempObjeto) )
-      parcelaMassaObjeto *= parcelaMassaObjeto
-      parcelaMassaObjeto *= incertezaBalanca * incertezaBalanca
-
-      let parcelaTempFinal = ( (((calorEspecificoAgua * massaAgua) * (tempInicialAgua - tempInicialObjeto)) + ((capacidadeTermicaCalorimetro) * (tempInicialAgua - tempInicialObjeto)) ) / ((massaObjeto) * (DeltaTempObjeto * DeltaTempObjeto)) )
-      parcelaTempFinal *= parcelaTempFinal
-      parcelaTempFinal *= incertezaTermometro * incertezaTermometro
-
-      let parcelaTempInicialAgua = (- ((calorEspecificoAgua * massaAgua) + capacidadeTermicaCalorimetro) / (massaObjeto * DeltaTempObjeto) )
-      parcelaTempInicialAgua *= parcelaTempInicialAgua
-      parcelaTempInicialAgua *= incertezaTermometro * incertezaTermometro
-
-      let parcelaTempInicialObjeto = ( (((calorEspecificoAgua * massaAgua) * DeltaTempAgua) + (capacidadeTermicaCalorimetro * DeltaTempAgua)) / ((massaObjeto) * (DeltaTempObjeto * DeltaTempObjeto)))
-      parcelaTempInicialObjeto *= parcelaTempInicialObjeto
-      parcelaTempInicialObjeto *= incertezaTermometro * incertezaTermometro
-
-      let parcelaCapacidadeTermicaCalorimetro = (DeltaTempAgua / massaObjeto * DeltaTempObjeto)
-      parcelaCapacidadeTermicaCalorimetro *= parcelaCapacidadeTermicaCalorimetro
-      parcelaCapacidadeTermicaCalorimetro *= incertezaCalorimetro * incertezaCalorimetro
-
-      const incertezaCalorEspecificoMaterial = Math.sqrt(parcelaMassaAgua + parcelaMassaObjeto + parcelaTempFinal + parcelaTempInicialAgua + parcelaTempInicialObjeto + parcelaCapacidadeTermicaCalorimetro)
-
-      console.log(incertezaCalorEspecificoMaterial)
-      return incertezaCalorEspecificoMaterial
-   
-    } else{
-      return null
-    }
-  }
-
   const handleCleanChart = (): void => {
     temperaturaEncontrada = false;
     temps = [];
@@ -268,62 +305,6 @@ export const addSeriesInChart = () => {
     chartUseRefReg?.current?.chart.series[1]?.remove();
     chartUseRefReg?.current?.chart.series[0]?.remove();
     chartUseRefTemp?.current?.chart.series[0]?.remove();
-  };
-
-  function processTemperatureData(newData: any, temps: any): any {
-    const processedDataItem = [0, newData[1]];
-    if (temps.length === 0 && newData[1])
-      firstDataTimestamp = newData[0] / 1000;
-
-    if (temps.length === 1) {
-      processedDataItem[0] = newData[0] / 1000 - firstDataTimestamp;
-    } else if (temps.length > 0) {
-      processedDataItem[0] = newData[0] / 1000 - firstDataTimestamp;
-    }
-
-    TempToTable.push([
-      new Date(newData[0]).toLocaleString(),
-      newData[1],
-      processedDataItem[0],
-    ]);
-    temps.push(processedDataItem);
-  }
-
-  const realTime = () => {
-    const dbRef = ref(db, "temperatura");
-    onValue(dbRef, (snapshot) => {
-      let data;
-      const result = snapshot.val();
-      if (typeof result === "number") {
-        const date = new Date().getTime();
-        data = [date, result];
-      } else {
-        snapshot.forEach((childSnapshot) => {
-          if (childSnapshot.key) {
-            data = [new Date().getTime(), childSnapshot.val()];
-          }
-        });
-      }
-
-      if (data) {
-        processTemperatureData(data, temps);
-        const hasSerie = chartUseRefTemp?.current?.chart.getOptions() as any;
-        if (hasSerie.series.length === 0) {
-          chartUseRefTemp?.current?.chart.addSeries({
-            type: "line",
-            name: "Temperature (°C)",
-            data: [],
-          });
-        }
-        verificaVariacaoTemperatura();
-
-        chartUseRefTemp?.current?.chart.series[0].addPoint({
-          x: temps[temps.length - 1][0],
-          y: temps[temps.length - 1][1],
-        });
-        chartUseRefReg?.current?.chart.redraw();
-      }
-    });
   };
 
   // Tabela
@@ -438,7 +419,18 @@ export const addSeriesInChart = () => {
     handleVariacaoTempo,
     handleMassaAgua,
     handleMassaObjeto,
-    handleTempInicialAgua,
-    handleTempInicialObjeto
+    handleTempAmbiente,
+    handleTempInicialObjeto,
+    handleCapacidadeTermicaCalorimetro,
+    handleIncertezaCapacidadeTermicaCalorimetro,
+    calculaCalorEspecifico,
+    calculaIncertezaCalorEspecifico,
+    isTemperatureRight,
+    massaAgua,
+    massaObjeto,
+    tempInicialAgua,
+    tempInicialObjeto,
+    capacidadeTermicaCalorimetro,
+    incertezaCapacidadeTermicaCalorimetro,
   };
 };
