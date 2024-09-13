@@ -58,8 +58,9 @@ import { InputsContainer } from "./styles";
                 newErrors["incertezaBalanca"] = "A incerteza da balança deve ser maior que 0 g";
             }
 
-            if (Number(tempInicialObjeto) <= 0) {
-                newErrors["tempInicialObjeto"] = "A temperatura inicial do objeto deve ser maior que 0 °C";
+            console.log(Number(tempInicialObjeto))
+            if (Number(tempInicialObjeto) <= -5 || Number(tempInicialObjeto) > 100) {
+                newErrors["tempInicialObjeto"] = "A temperatura inicial do objeto deve ser maior que -5 °C e menor que 100 °C";
             }
 
             if(Number(incertezaTermometro) <= 0){

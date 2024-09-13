@@ -9,7 +9,7 @@ import {
 } from "./styles";
 import { controllerResultados } from "./controllers/firebaseRealtime";
 import { Backdrop, CircularProgress, TableContainer } from "@mui/material";
-import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper } from '@mui/material';
+import { Box, Table, TableBody, TableCell, TableHead, TableRow, Paper } from '@mui/material';
 
 import { ModalContext } from "./context/modalContext";
 import { ModalContextDTO } from "./entities/modalContextDTO";
@@ -31,6 +31,7 @@ export const Home = () => {
     realTimeTemperature,
     calorEspecificoMaterial,
     incertezaCalorEspecificoMaterial,
+    diferencaPercentualMedia,
   } = controllerResultados();
 
   const {
@@ -86,9 +87,7 @@ export const Home = () => {
 
     useEffect(() => {
       if(isReady){
-        // calculaIncertezaCalorEspecifico(temperaturaFinal);
         calculaCalorEspecifico(temperaturaFinal);
-        // encontraMaterial(calorEspecificoMaterialNumber, incertezaCalorEspecificoMaterialNumber);
       }
     }, [isReady])
 
@@ -118,7 +117,7 @@ export const Home = () => {
       >
         <CircularProgress color="inherit" />
         <p>Atingindo a temperatura de equilíbrio</p>
-        <p>{currentTemperature} cal/g°C</p>
+        <p>{currentTemperature} °C</p>
       </Backdrop>
 
       <Container>
@@ -148,25 +147,27 @@ export const Home = () => {
                     <TableRow>
                       <TableCell align="center" sx={{ backgroundColor: 'gray', color: 'white', fontWeight: 'bold' }}>Material</TableCell>
                       <TableCell align="center" sx={{ backgroundColor: 'gray', color: 'white', fontWeight: 'bold' }}>Calor Específico (cal/g°C)</TableCell>
+                      <TableCell align="center" sx={{ backgroundColor: 'gray', color: 'white', fontWeight: 'bold' }}>Similaridade</TableCell>
                     </TableRow>
                   </TableHead>
-                  <TableBody>
+                    <TableBody>
                     {[
-                      { material: 'Água', calor: 1.0000 },
-                      { material: 'Alumínio', calor: 0.2140 },
-                      { material: 'Cobre', calor: 0.0920 },
-                      { material: 'Ferro', calor: 0.1070 },
-                      { material: 'Prata', calor: 0.0561 },
-                      { material: 'Ouro', calor: 0.0308 },
-                      { material: 'Madeira', calor: 0.4420 },
-                      { material: 'Bronze', calor: 0.0884 }
+                      { material: 'Água', calor: 1.0000, similaridade: '-' },
+                      { material: 'Alumínio', calor: 0.2140, similaridade: `${(Number((1 - diferencaPercentualMedia[0]).toPrecision(2)) * 100).toString()}%` },
+                      { material: 'Cobre', calor: 0.0920, similaridade: `${(Number((1 - diferencaPercentualMedia[1]).toPrecision(2)) * 100).toString()}%` },
+                      { material: 'Ferro', calor: 0.1070, similaridade: `${(Number((1 - diferencaPercentualMedia[2]).toPrecision(2)) * 100).toString()}%` },
+                      { material: 'Prata', calor: 0.0561, similaridade: `${(Number((1 - diferencaPercentualMedia[3]).toPrecision(2)) * 100).toString()}%` },
+                      { material: 'Ouro', calor: 0.0308, similaridade: `${(Number((1 - diferencaPercentualMedia[4]).toPrecision(2)) * 100).toString()}%` },
+                      { material: 'Madeira', calor: 0.4420, similaridade: `${(Number((1 - diferencaPercentualMedia[5]).toPrecision(2)) * 100).toString()}%` },
+                      { material: 'Bronze', calor: 0.0884, similaridade: `${(Number((1 - diferencaPercentualMedia[6]).toPrecision(2)) * 100).toString()}%` }
                     ].map((row) => (
                       <TableRow key={row.material} sx={{ '&:nth-of-type(even)': { backgroundColor: '#f2f2f2' } }}>
-                        <TableCell align="center">{row.material}</TableCell>
-                        <TableCell align="center">{row.calor}</TableCell>
+                      <TableCell align="center">{row.material}</TableCell>
+                      <TableCell align="center">{row.calor}</TableCell>
+                      <TableCell align="center">{row.similaridade}</TableCell>
                       </TableRow>
                     ))}
-                  </TableBody>
+                    </TableBody>
                 </Table>
               </TableContainer>
             </Box>

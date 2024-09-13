@@ -1,4 +1,4 @@
-import { ref, onValue, set } from "firebase/database";
+import { ref, onValue } from "firebase/database";
 import { StartFireBase } from "../../authFirebase";
 import { useState } from "react";
 import "react-toastify/dist/ReactToastify.css";
@@ -20,7 +20,7 @@ export const controllerResultados = () => {
   const [incertezaCalorEspecificoMaterialNumber, setIncertezaCalorEspecificoMaterialNumber] = useState<number>(0);
   const [provavelMaterial, setProvavelMaterial] = useState<string>("");
   const [diferencaPercentualProvavel, setDiferencaPercentual] = useState<number>(0);
-  const [diferencaPercentualMedia, setDiferencaPercentualMedia] = useState<number>(0);
+  const [diferencaPercentualMedia, setDiferencaPercentualMedia] = useState<number[]>([]);
   const incertezaBalanca = 0.001
   const incertezaTermometro = 0.5
   const calorEspecificoAgua = 1
@@ -53,6 +53,8 @@ export const controllerResultados = () => {
   };
 
   const calculaCalorEspecifico = (temperaturaFinalExp: number) => {
+    let calorEspecificoMaterialCalc = 0;
+    let incertezaCalorEspecificoMaterialCalc = 0;
     if(massaAgua !== 0 && massaObjeto !== 0 && tempInicialAgua !== 0 && tempInicialObjeto !== 0){
       const DeltaTempAgua = temperaturaFinalExp - tempInicialAgua;
       const DeltaTempObjeto = temperaturaFinalExp - tempInicialObjeto;
@@ -86,14 +88,14 @@ export const controllerResultados = () => {
       parcelaCapacidadeTermicaCalorimetro *= incertezaCapacidadeTermicaCalorimetro * incertezaCapacidadeTermicaCalorimetro
 
       const somaAbsoluta = Math.abs(parcelaMassaAgua) + Math.abs(parcelaMassaObjeto) + Math.abs(parcelaTempFinal) + Math.abs(parcelaTempInicialAgua) + Math.abs(parcelaTempInicialObjeto) + Math.abs(parcelaCapacidadeTermicaCalorimetro)
-      const incertezaCalorEspecificoMaterialCalc = Math.sqrt(somaAbsoluta)
+      incertezaCalorEspecificoMaterialCalc = Math.sqrt(somaAbsoluta)
     
       const stringCorreta = incertezaCalorEspecificoMaterialCalc.toPrecision(2).toString()
 
       setIncertezaCalorEspecificoMaterial(stringCorreta)
       setIncertezaCalorEspecificoMaterialNumber(incertezaCalorEspecificoMaterialCalc)
 
-      const calorEspecificoMaterialCalc = Math.abs(- ( (massaAgua * calorEspecificoAgua * DeltaTempAgua) + (capacidadeTermicaCalorimetro * DeltaTempAgua) ) / (massaObjeto  * DeltaTempObjeto) )
+      calorEspecificoMaterialCalc = Math.abs(- ( (massaAgua * calorEspecificoAgua * DeltaTempAgua) + (capacidadeTermicaCalorimetro * DeltaTempAgua) ) / (massaObjeto  * DeltaTempObjeto) )
       
       const digits = stringCorreta.split(".")[1]?.length || 2;
       setCalorEspecificoMaterial(calorEspecificoMaterialCalc.toFixed(digits).replace(".", ","));
@@ -103,19 +105,19 @@ export const controllerResultados = () => {
       setCalorEspecificoMaterial("0")
     }
 
-    const diferencaPercentualAluminio = Math.abs((calorEspecificoMaterialNumber - calorEspecificoAluminio) / calorEspecificoAluminio)
-    const diferencaPercentualCobre = Math.abs((calorEspecificoMaterialNumber - calorEspecificoCobre) / calorEspecificoCobre)
-    const diferencaPercentualFerro = Math.abs((calorEspecificoMaterialNumber - calorEspecificoFerro) / calorEspecificoFerro)
-    const diferencaPercentualPrata = Math.abs((calorEspecificoMaterialNumber - calorEspecificoPrata) / calorEspecificoPrata)
-    const diferencaPercentualOuro = Math.abs((calorEspecificoMaterialNumber - calorEspecificoOuro) / calorEspecificoOuro)
-    const diferencaPercentualMadeira = Math.abs((calorEspecificoMaterialNumber - calorEspecificoMadeira) / calorEspecificoMadeira)
-    const diferencaPercentualBronze = Math.abs((calorEspecificoMaterialNumber - calorEspecificoBronze) / calorEspecificoBronze)
+    const diferencaPercentualAluminio = Math.abs((calorEspecificoMaterialCalc - calorEspecificoAluminio) / calorEspecificoAluminio)
+    const diferencaPercentualCobre = Math.abs((calorEspecificoMaterialCalc - calorEspecificoCobre) / calorEspecificoCobre)
+    const diferencaPercentualFerro = Math.abs((calorEspecificoMaterialCalc - calorEspecificoFerro) / calorEspecificoFerro)
+    const diferencaPercentualPrata = Math.abs((calorEspecificoMaterialCalc - calorEspecificoPrata) / calorEspecificoPrata)
+    const diferencaPercentualOuro = Math.abs((calorEspecificoMaterialCalc - calorEspecificoOuro) / calorEspecificoOuro)
+    const diferencaPercentualMadeira = Math.abs((calorEspecificoMaterialCalc - calorEspecificoMadeira) / calorEspecificoMadeira)
+    const diferencaPercentualBronze = Math.abs((calorEspecificoMaterialCalc - calorEspecificoBronze) / calorEspecificoBronze)
 
     const diferencaPercentual = [diferencaPercentualAluminio, diferencaPercentualCobre, diferencaPercentualFerro, diferencaPercentualPrata, diferencaPercentualOuro, diferencaPercentualMadeira, diferencaPercentualBronze]
     const materiais = ["Alumínio", "Cobre", "Ferro", "Prata", "Ouro", "Madeira", "Bronze"]
 
-    const calorEspecificoMaterialSomado = calorEspecificoMaterialNumber + incertezaCalorEspecificoMaterialNumber
-    const calorEspecificoMaterialSubtraido = calorEspecificoMaterialNumber - incertezaCalorEspecificoMaterialNumber
+    const calorEspecificoMaterialSomado = calorEspecificoMaterialCalc + incertezaCalorEspecificoMaterialCalc
+    const calorEspecificoMaterialSubtraido = calorEspecificoMaterialCalc - incertezaCalorEspecificoMaterialCalc
 
     const diferencaPercentualSomadoPercentual = [
       Math.abs((calorEspecificoMaterialSomado - calorEspecificoAluminio) / calorEspecificoAluminio), 
@@ -154,16 +156,21 @@ export const controllerResultados = () => {
     const mediaDiferencaBronze = diferencasBronze.reduce((a, b) => a + b) / diferencasBronze.length
 
     const mediaDiferencas = [mediaDiferencaAluminio, mediaDiferencaCobre, mediaDiferencaFerro, mediaDiferencaPrata, mediaDiferencaOuro, mediaDiferencaMadeira, mediaDiferencaBronze]
+    console.log(mediaDiferencas)
+    console.log(diferencaPercentual)
     const indexMenorMediaDiferenca = mediaDiferencas.indexOf(Math.min(...mediaDiferencas))
+
+    console.log(indexMenorMediaDiferenca)
+
     setProvavelMaterial(materiais[indexMenorMediaDiferenca])
     setDiferencaPercentual(diferencaPercentual[indexMenorMediaDiferenca])
-    setDiferencaPercentualMedia(mediaDiferencas[indexMenorMediaDiferenca])
+    setDiferencaPercentualMedia(mediaDiferencas)
 
     toast.success(
       `
         Material mais provável: ${materiais[indexMenorMediaDiferenca]} \n
-        Diferença percentual: ${Number(diferencaPercentual[indexMenorMediaDiferenca].toPrecision(2)) * 100}% \n
-        Diferença percentual média: ${Number(mediaDiferencas[indexMenorMediaDiferenca].toPrecision(2)) * 100}%
+        Diferença percentual: ${(Number(diferencaPercentual[indexMenorMediaDiferenca].toPrecision(2)) * 100).toFixed(2)}% \n
+        Diferença percentual média: ${(Number(mediaDiferencas[indexMenorMediaDiferenca].toPrecision(2)) * 100).toFixed(2)}%
       `
     )
   }
