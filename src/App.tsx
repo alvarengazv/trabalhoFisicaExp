@@ -1,6 +1,6 @@
 import { useState } from "react";
 import "./App.css";
-import { Chart } from "./dashboard";
+import { Home } from "./dashboard";
 import ResponsiveAppBar from "./dashboard/components/navbar";
 import { ModalContextProvider } from "./dashboard/context/modalContext";
 import { ToastContainer } from "react-toastify";
@@ -12,7 +12,7 @@ function App() {
         <ToastContainer />
 
         <ResponsiveAppBar />
-        <Chart />
+        <Home />
       </ModalContextProvider>
     </>
   );

@@ -1,14 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button, TextField } from "@mui/material";
 import { InputsContainer } from "./styles";
 
     export const FormComponent = (
       {
-            temperaturaFinal,
             buscaTemperatura,
-            isTemperatureRight,
             isReady,
-            isFormSubmmited,
             setIsReady,
             handleMassaAgua,
             handleMassaObjeto,
@@ -16,13 +13,11 @@ import { InputsContainer } from "./styles";
             handleCapacidadeTermicaCalorimetro,
             handleIncertezaCapacidadeTermicaCalorimetro,
             setIsFormSubmmited,
-            setIsTemperatureRight
+            setIsTemperatureRight,
+            setTemperatura,
       }: {
-            temperaturaFinal: number,
-            buscaTemperatura: () => Promise<boolean>,
-            isTemperatureRight: boolean,
+            buscaTemperatura: () => Promise<{ success: boolean, temperature: number }>,
             isReady: boolean,
-            isFormSubmmited: boolean
             setIsReady: React.Dispatch<React.SetStateAction<boolean>>,
             handleMassaAgua: React.Dispatch<React.SetStateAction<number>>,
             handleMassaObjeto: React.Dispatch<React.SetStateAction<number>>,
@@ -30,7 +25,8 @@ import { InputsContainer } from "./styles";
             handleCapacidadeTermicaCalorimetro: React.Dispatch<React.SetStateAction<number>>,
             handleIncertezaCapacidadeTermicaCalorimetro: React.Dispatch<React.SetStateAction<number>>,
             setIsFormSubmmited: React.Dispatch<React.SetStateAction<boolean>>,
-            setIsTemperatureRight: React.Dispatch<React.SetStateAction<boolean>>
+            setIsTemperatureRight: React.Dispatch<React.SetStateAction<boolean>>,
+            setTemperatura: React.Dispatch<React.SetStateAction<number>>,
       }
     ) => {
         const [massaAgua, setMassaAgua] = useState<string>("0");
@@ -42,41 +38,6 @@ import { InputsContainer } from "./styles";
         const [incertezaCapacidadeTermicaCalorimetro, setIncertezaCapacidadeTermicaCalorimetro] = useState<string>("4.096795514");
         const [errors, setErrors] = useState<any>({});
         const [submitEnabled, setSubmitEnabled] = useState<boolean>(!isReady);
-
-        const intervalRef = useRef<NodeJS.Timeout | null>(null);
-        const isTemperatureRightRef = useRef(isTemperatureRight);
-        const temperaturaFinalRef = useRef(temperaturaFinal);
-
-        // useEffect(() => {
-        //     handleIncertezaCapacidadeTermicaCalorimetro(Number(incertezaCapacidadeTermicaCalorimetro));
-        //     handleCapacidadeTermicaCalorimetro(Number(capacidadeTermicaCalorimetro));
-        //     handleTempInicialObjeto(Number(tempInicialObjeto));
-        //     handleMassaObjeto(Number(massaObjeto));
-        //     handleMassaAgua(Number(massaAgua));
-        // }, [isReady]);
-
-        useEffect(() => {
-            isTemperatureRightRef.current = isTemperatureRight;
-            temperaturaFinalRef.current = temperaturaFinal;
-
-            if (isTemperatureRight && isFormSubmmited ) {
-                if (intervalRef.current !== null) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-                }
-                setIsReady(true);
-            }
-          }, [isTemperatureRight, temperaturaFinal]);
-          
-          useEffect(() => {
-            return () => {
-              if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-              }
-            };
-          }, []);
-
-        // const { isTemperatureRight, temperaturaFinal, buscaTemperatura } = TemperaturaEquilibrioRealtime();
 
         const handleSubmit = () => {
             setSubmitEnabled(false);
@@ -117,14 +78,7 @@ import { InputsContainer } from "./styles";
 
             if (Object.keys(newErrors).length === 0) {
                 setIsTemperatureRight(false);
-                console.log("Formulário preenchido corretamente");
-                console.log("Massa da água: ", massaAgua);
-                console.log("Massa do objeto: ", massaObjeto);
-                console.log("Temperatura inicial do objeto: ", tempInicialObjeto);
-                console.log("Capacidade térmica do calorímetro: ", capacidadeTermicaCalorimetro);
-                console.log("Incerteza da capacidade térmica do calorímetro: ", incertezaCapacidadeTermicaCalorimetro);
 
-                // Lógica para aguardar a temperatura 
                 triggerTemperatureCheck();
             } else{
                 setSubmitEnabled(true);
@@ -132,23 +86,25 @@ import { InputsContainer } from "./styles";
         };
 
         const triggerTemperatureCheck = () => {
-            intervalRef.current = setInterval(() => {
-              buscaTemperatura().then((r) => {
-                    if (r) {
+            const interval = setInterval(() => {
+                buscaTemperatura().then((r) => {
+                    const updatedTemperature = r["temperature"];
+
+                    if (r["success"]) {
                         handleIncertezaCapacidadeTermicaCalorimetro(Number(incertezaCapacidadeTermicaCalorimetro));
                         handleCapacidadeTermicaCalorimetro(Number(capacidadeTermicaCalorimetro));
                         handleTempInicialObjeto(Number(tempInicialObjeto));
                         handleMassaObjeto(Number(massaObjeto));
                         handleMassaAgua(Number(massaAgua));
-                        console.log("Temperature is correct: ", temperaturaFinal);
+                        setTemperatura(updatedTemperature);
                         setIsReady(true);
+                        clearInterval(interval);
                     } else {
                         setIsReady(false);
-                        console.log("Temperature is not correct yet: ", temperaturaFinal);
                     }
                 });
             }, 30000);
-          };
+        };
 
         const replaceDotWithComma = (str: string) => {
             return str.replace(/\./g, ',');
