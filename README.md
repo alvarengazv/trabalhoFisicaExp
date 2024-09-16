@@ -47,7 +47,7 @@ CEFET-MG Campus V <br>
     </li>
     <li><a href="#-conclusão">🏁 Conclusão</a></li>
     <li>
-      <a href="#-começando">🔨 Começando</a>
+      <a href="#-executando">🔨 Executando</a>
       <ul>
         <li><a href="#execução-do-programa-arduino-ide">Execução do Programa Arduino IDE</a></li>
         <li><a href="#execução-do-programa-web">Execução do Programa Web</a></li>
@@ -303,7 +303,7 @@ Essa equação permite calcular o calor específico do material a partir das mas
 
 <p align="right">(<a href="#readme-topo">voltar ao topo</a>)</p>
 
-## 🔨 Começando
+## 🔨 Executando
 
 <div align="justify">
 
@@ -338,11 +338,106 @@ Essa equação permite calcular o calor específico do material a partir das mas
 
 <div align="justify">
 
-  5. Atualize o código com a sua rede Wi-Fi e a senha do seu Wi-Fi.
-  
-  6. Após a montagem do circuito e a atualização do código, faça o upload para o microcontrolador.
+  5. Instale as bibliotecas necessárias tanto para o sensor de temperatura quanto para o microcontrolador. Para isso, siga os passos abaixo:
 
-  7. Agora o sensor de temperatura estará enviando os dados para o banco de dados *Firebase Realtime Database*.
+  #### Bibliotecas para o Microcontrolador ESP8266
+  Primeira etapa você deve abrir o *Arduino IDE* e ir em **Arquivo (File) > Preferências (Preferences)**. 
+
+</div>
+
+<div align="center">
+    <img src="./src/assets/ArquivoPreferencias.png" alt="Preferências do Arduino IDE" width="300"/>
+    <p>Figura 7: Preferências do Arduino IDE</p>
+</div>
+  
+<div align="justify">
+  
+  No campo **URLs Adicionais para Gerenciadores de Placas (Additional Boards Manager URLs)**, adicione o link: 
+
+  ```console
+  http://arduino.esp8266.com/stable/package_esp8266com_index.json
+  ```
+
+</div>
+
+<div align="center">
+    <img src="./src/assets/adicionandoURL.png" alt="Adicionando URL" width="400"/>
+    <p>Figura 8: Adicionando URL</p>
+</div>
+
+<div align="justify">
+
+   Depois, vá em **Ferramentas (Tools) > Placa (Board) > Gerenciador de Placas (Board Manager)**, procure por *ESP8266* e selecione **ESP8266 by ESP8266 Community**, clique em **Instalar**. Veja a imagem abaixo:
+
+</div>
+
+<div align="center">
+    <img src="./src/assets/instalandoESP8266ArduinoIDE.jpg" alt="Instalação do ESP8266" width="500"/>
+    <p>Figura 9: Instalação do ESP8266</p>
+</div>
+
+<div align="justify">
+
+  Depois de instalar o *ESP8266*, vá em **Ferramentas (Tools) > Placa (Board) > ESP8266 Boards > NodeMCU 1.0 (ESP-12E Module)**. Como mostra a imagem abaixo:
+
+</div>
+
+<div align="center">
+    <img src="./src/assets/nodeMCU1.0.png" alt="Seleção do ESP8266" width="400"/>
+    <p>Figura 10: Seleção do ESP8266</p>
+</div>
+
+<div align="justify">
+
+  Agora, o *Arduino IDE* está pronto para ser utilizado com o microcontrolador *ESP8266*.
+
+  #### Bibliotecas para o Sensor de Temperatura DS18B20
+
+  Para instalar a biblioteca do sensor de temperatura, vá em **Sketch (Arquivo) > Incluir Biblioteca (Include Library) > Gerenciar Bibliotecas (Manage Libraries)**. Procure por *OneWire* e *DallasTemperature* e instale as duas bibliotecas. Veja a imagem abaixo:
+
+</div>
+
+<div align="center">
+    <img src="./src/assets/oneWrite.png" alt="Instalação da Biblioteca OneWire" width="500"/>
+    <p>Figura 11: Instalação da Biblioteca OneWire</p>
+</div>
+
+<div align="center">
+    <img src="./src/assets/dallas.png" alt="Instalação da Biblioteca DallasTemperature" width="500"/>
+    <p>Figura 12: Instalação da Biblioteca DallasTemperature</p>
+</div>
+
+<div align="justify">
+
+  #### Bibliotecas para o Firebase
+  É necessário também algumas configurações no código para que o microcontrolador consiga se conectar à rede Wi-Fi e enviar os dados para o banco de dados *Firebase Realtime Database*. Para isso, entre novamente em **Sketch (Arquivo) > Incluir Biblioteca (Include Library) > Bibliotecas (Libraries)** e adicione a biblioteca *Firebase-ESP-Client*. Veja a imagem abaixo:
+
+</div>
+
+<div align="center">
+    <img src="./src/assets/firebaseESP8266.png" alt="Instalação da Biblioteca FirebaseESP8266" width="500"/>
+    <p>Figura 13: Instalação da Biblioteca FirebaseESP8266</p>
+</div>
+
+<div align="justify">
+
+  E agora está tudo pronto para a execução do programa. 
+
+
+
+  6. Atualize o código [codigoEsp.ino](./src/eso8266/codigoEsp.ino) com as informações da sua rede Wi-Fi e sua senha, logo a baixo dos includes, nas linhas `13` e `14`:
+
+  ```cpp  
+  
+// Insert your network credentials
+#define WIFI_SSID ""      // Adicionar o nome da rede
+#define WIFI_PASSWORD ""  // Adicionar a senha da rede
+
+  ```
+  
+  7. Após os passos anteriores, faça o upload do código para o microcontrolador.
+
+  8. Agora o sensor de temperatura estará enviando os dados para o banco de dados *Firebase Realtime Database*.
 
 </div>
 
@@ -352,38 +447,46 @@ Essa equação permite calcular o calor específico do material a partir das mas
   
   Para compilar e executar o programa, siga os passos abaixo:
 
-  1. Clone o repositório no diretório desejado:
+  1. Entre no diretório do projeto, que clonaou anteriormente:
   ```console
-  git clone https://github.com/dudatsouza/trabalhoFisicaExp.git
-
   cd trabalhoFisicaExp
   ```
+
+2. Instale o *Node.js*:
+  - Acesse o site [https://nodejs.org/](https://nodejs.org/) e faça o download da versão LTS.
+  - Execute o instalador e siga as instruções.
+  - Verifique se o *Node.js* foi instalado corretamente:
+    ```console
+      node -v
+      npm -v
+    ```
+  - Esses comandos devem retornar as versões instaladas do *Node.js* e do *npm*.
+
 </div>
 
 > [!NOTE] 
-> Caso não tenha o *npm* instalado, siga as instruções em [npm](https://www.npmjs.com/get-npm).
+> Caso você tenha problemas com a instalação do *Node.js*, consulte a documentação oficial em [https://nodejs.org/](https://nodejs.org/).
 
 <div align="justify">
 
-  2. Instale as dependências do projeto:
-  ```console
-    npm install
-  ```
+3. Instale as dependências do projeto:
+```console
+  npm install
+```
 
-  3. Execute o projeto:
-  ```console
-    npm run dev
-  ```
-  
-  4. Acesse o endereço [http://localhost:5173](http://localhost:5173) para visualizar o projeto.
+4. Execute o projeto:
+```console
+  npm run dev
+```
 
-  Agora você pode visualizar o projeto e realizar os testes necessários. 
+5. Acesse o endereço [http://localhost:5173](http://localhost:5173) para visualizar o projeto.
+
+Agora você pode visualizar o projeto e realizar os testes necessários. 
 
 </div>
 
 > [!IMPORTANT] 
 > É importante lembrar que é necessário que o circuito esteja montado e o sensor de temperatura conectado ao microcontrolador para que o programa funcione corretamente. Pois ele estará mandando os dados para o banco de dados *Firebase Realtime Database* e o site estará requisitando esses dados para mostrar em tempo real.
-
 
 <p align="right">(<a href="#readme-topo">voltar ao topo</a>)</p>
 
