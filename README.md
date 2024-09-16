@@ -391,6 +391,13 @@ Essa equação permite calcular o calor específico do material a partir das mas
 
   Agora, o *Arduino IDE* está pronto para ser utilizado com o microcontrolador *ESP8266*.
 
+</div>
+
+> [!NOTE] 
+> Caso tenha alguma dúvida ou dificuldade, siga no tutorial o tópico **Configurando o Arduino IDE para o ESP8266** do [tutorial](https://blog.smartkits.com.br/esp8266-como-programar-o-nodemcu-atraves-da-arduino-ide/).
+
+<div align="justify">  
+
   #### Bibliotecas para o Sensor de Temperatura DS18B20
 
   Para instalar a biblioteca do sensor de temperatura, vá em **Sketch (Arquivo) > Incluir Biblioteca (Include Library) > Gerenciar Bibliotecas (Manage Libraries)**. Procure por *OneWire* e *DallasTemperature* e instale as duas bibliotecas. Veja a imagem abaixo:
@@ -406,6 +413,9 @@ Essa equação permite calcular o calor específico do material a partir das mas
     <img src="./src/assets/dallas.png" alt="Instalação da Biblioteca DallasTemperature" width="500"/>
     <p>Figura 12: Instalação da Biblioteca DallasTemperature</p>
 </div>
+
+> [!NOTE] 
+> Caso tenha alguma dúvida ou dificuldade, siga no tutorial o tópico **Installing Libraries for DS18B20** do [tutorial](https://randomnerdtutorials.com/esp8266-ds18b20-temperature-sensor-web-server-with-arduino-ide/).
 
 <div align="justify">
 
@@ -423,7 +433,12 @@ Essa equação permite calcular o calor específico do material a partir das mas
 
   E agora está tudo pronto para a execução do programa. 
 
+</div>
 
+> [!NOTE] 
+> Caso tenha alguma dúvida ou dificuldade, siga no tutorial o tópico **Código-fonte do Arduino para ESP8266 e Firebase** do [tutorial](https://douglasgaspar.wordpress.com/2021/04/23/utilizando-esp8266-nodemcu-com-realtime-database-do-firebase/).
+
+<div align="justify">
 
   6. Atualize o código [codigoEsp.ino](./src/eso8266/codigoEsp.ino) com as informações da sua rede Wi-Fi e sua senha, logo a baixo dos includes, nas linhas `13` e `14`:
 
@@ -447,7 +462,7 @@ Essa equação permite calcular o calor específico do material a partir das mas
   
   Para compilar e executar o programa, siga os passos abaixo:
 
-  1. Entre no diretório do projeto, que clonaou anteriormente:
+  1. Entre no diretório do projeto, que clonamos anteriormente:
   ```console
   cd trabalhoFisicaExp
   ```
